@@ -1,7 +1,7 @@
 # NEXT Medical AMR Advanced Digital Twin Simulator
 
-> **Live Interactive Sandbox:** 🔗 **[Launch Online AMR Web-Twin Simulator](https://github.io)**  
-> *(Note: Replace 'your-repo-name' with your actual GitHub repository name in the URL above)*
+> **Live Interactive Sandbox:** 🔗 **[Launch Online AMR Web-Twin Simulator]([https://github.io](https://ginevralucricia2-lab.github.io/AMR-PCB-improvement-for-GNSS-environment/))**  
+
 
 ---
 
