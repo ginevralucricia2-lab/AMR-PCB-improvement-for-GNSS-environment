@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical AMR Advanced Digital Twin Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --panel-bg: #161b22; --border-color: #30363d;
+            --text-color: #c9d1d9; --accent-blue: #58a6ff; --accent-green: #3fb950;
+            --accent-red: #f85149; --accent-yellow: #d29922;
+        }
+        body {
+            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            display: grid; grid-template-columns: 360px 1fr; height: 100vh; width: 100vw; overflow: hidden;
+        }
+        #sidebar {
+            background-color: var(--panel-bg); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; padding: 12px; box-sizing: border-box; gap: 8px; height: 100vh; overflow-y: auto;
+        }
+        #main-stage { display: flex; flex-direction: column; height: 100vh; background-color: #05070a; box-sizing: border-box; overflow: hidden; }
+        #top-bar { background-color: var(--panel-bg); border-bottom: 1px solid var(--border-color); padding: 0 15px; display: flex; justify-content: space-between; align-items: center; height: 40px; box-sizing: border-box; }
+        #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; background-color: #05070a; padding: 10px; box-sizing: border-box; overflow: hidden; }
+        canvas { background-color: #010204; border: 1px solid var(--border-color); box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: crosshair; max-width: 100%; max-height: 100%; }
+        h2 { font-size: 1.05rem; color: #fff; border-bottom: 1px solid var(--border-color); margin: 0; padding-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+        h3 { font-size: 0.85rem; color: var(--accent-blue); display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+        .telemetry-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+        .data-row { display: flex; justify-content: space-between; font-size: 0.78rem; font-family: monospace; }
+        .data-val { font-weight: bold; }
+        .val-good { color: var(--accent-green); }
+        .val-warn { color: var(--accent-yellow); }
+        .val-danger { color: var(--accent-red); }
+        .progress-bar-bg { background: #21262d; height: 5px; border-radius: 2px; width: 100%; overflow: hidden; margin-top: 2px; }
+        .progress-bar-fill { height: 100%; width: 0%; transition: width 0.3s ease; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { background-color: #21262d; border: 1px solid var(--border-color); color: #c9d1d9; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.78rem; transition: all 0.2s; }
+        button:hover { background-color: #30363d; border-color: #8b949e; }
+        button.active { background-color: var(--accent-red); border-color: #f85149; color: #fff; }
+        button.active-blue { background-color: #1f6feb; border-color: #388bfd; color: #fff; }
+        .tag { font-size: 0.7rem; padding: 1px 5px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }
+        .tag-sys { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(88,166,255,0.3); }
+        .system-logs { background: #05070a; border: 1px solid var(--border-color); border-radius: 4px; height: 90px; font-family: monospace; font-size: 0.72rem; padding: 6px; overflow-y: auto; color: #8b949e; display: flex; flex-direction: column; gap: 3px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>AMR Telemetry Dashboard</h2>
+        <div class="telemetry-card">
+            <h3>🌡️ BYD Thermal Control (Metal PCB)</h3>
+            <div class="data-row"><span>Edge AI Core Temp:</span><span id="txt-temp" class="data-val val-good">41.5 °C</span></div>
+            <div class="progress-bar-bg"><div id="bar-temp" class="progress-bar-fill" style="background-color: var(--accent-green); width: 50%;"></div></div>
+            <div class="data-row" style="margin-top: 1px;"><span>Cooling Mode:</span><span id="txt-cooling" class="data-val" style="color: var(--accent-blue);">Smart Hybrid</span></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>🔄 EKF Sensor Fusion Architecture</h3>
+            <div class="data-row"><span>Fusion State:</span><span id="txt-fusion-mode" class="data-val val-good">FAST-LIO2 Tightly-Coupled</span></div>
+            <div class="data-row"><span>LiDAR Weight:</span><span id="weight-lidar" class="data-val" style="color: var(--accent-blue);">0.60</span></div>
+            <div class="data-row"><span>GNSS/RTK Weight:</span><span id="weight-gnss" class="data-val" style="color: var(--accent-blue);">0.30</span></div>
+            <div class="data-row"><span>IMU Inertial Weight:</span><span id="weight-imu" class="data-val" style="color: var(--accent-blue);">0.10</span></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>📡 Multi-GNSS / RTK Kinematics</h3>
+            <div class="data-row"><span>Fix Status:</span><span id="txt-gnss" class="data-val val-good">RTK FIX (Centimeter)</span></div>
+            <div class="data-row"><span>Satellite Constellation:</span><span class="data-val">28 Locked (GPS/BDS/GAL)</span></div>
+            <div class="data-row"><span>RMS Position Error:</span><span id="txt-accuracy" class="data-val val-good">1.4 cm</span></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>🛡️ Medical EMC Isolation (IEC 60601)</h3>
+            <div class="data-row"><span>CAN-Bus Frame Error Rate:</span><span id="txt-can-err" class="data-val val-good">0.00 %</span></div>
+            <div class="data-row"><span>MRI/CT Isolation SNR:</span><span class="data-val val-good">+78.4 dB</span></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>🤖 ROS2 Nav2 / TEB Local Planner</h3>
+            <div class="data-row"><span>Actuator Model:</span><span class="data-val" style="color: #fff;">DJI 3508 x4 (1kHz PID)</span></div>
+            <div class="data-row"><span>Target Node Coordinate:</span><span id="txt-target" class="data-val">Not Set</span></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>⚙️ Simulation Control Panel</h3>
+            <div class="btn-grid">
+                <button id="btn-reset" onclick="resetSimulation()">Reset Robot</button>
+                <button id="btn-weather" onclick="toggleWeather()">Toggle Storm</button>
+            </div>
+            <div style="margin-top: 3px;"><button id="btn-radiation" style="width:100%; border-color: var(--accent-red);" onclick="toggleRadiation()">Simulate Medical Radiation EMI</button></div>
+        </div>
+        <div class="telemetry-card">
+            <h3>📝 Real-Time Node Logs</h3>
+            <div id="logs" class="system-logs"></div>
+        </div>
+    </div>
+    <div id="main-stage">
+        <div id="top-bar">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: bold; color: #fff; font-size: 0.9rem;">NEXT Medical Robot Sandbox</span><span class="tag tag-sys">Industrial Stack v4.1</span></div>
+            <div style="font-size: 0.78rem; color: #8b949e;">💡 <b>Click anywhere on the black canvas map</b> to dispatch a ROS2 path-planning target.</div>
+        </div>
+        <div id="canvas-container"><canvas id="stageCanvas" width="850" height="600"></canvas></div>
+    </div>
+    <script>
+        const canvas = document.getElementById('stageCanvas'); const ctx = canvas.getContext('2d'); const logBox = document.getElementById('logs');
+        let isStormActive = false; let isRadiationEMIPresent = false; let logs = []; let rainParticles = [];
+        function appendLog(text) { const time = new Date().toLocaleTimeString(); logs.push(`[${time}] ${text}`); if(logs.length > 20) logs.shift(); logBox.innerHTML = logs.map(l => `<div>${l}</div>`).join(''); logBox.scrollTop = logBox.scrollHeight; }
+        const robot = { x: 150, y: 300, radius: 18, heading: 0, vx: 0, vy: 0, targetX: null, targetY: null, speed: 2.5, temperature: 41.5, canError: 0.00 };
+        const obstacles = [
+            {x: 350, y: 60,  w: 100, h: 160, name: "CT Scanner Suite"}, {x: 350, y: 360, w: 100, h: 180, name: "MRI Isolation Zone"},
+            {x: 620, y: 220, w: 150, h: 80,  name: "Central Nurse Station"}, {x: 100, y: 60,  w: 130, h: 50,  name: "Bio-Waste Terminal"}
+        ];
+        function initRain() { rainParticles = []; for(let i=0; i<60; i++) { rainParticles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, length: Math.random() * 12 + 8, speed: Math.random() * 12 + 8 }); } }
+        canvas.addEventListener('click', (e) => { const rect = canvas.getBoundingClientRect(); robot.targetX = (e.clientX - rect.left) * (canvas.width / rect.width); robot.targetY = (e.clientY - rect.top) * (canvas.height / rect.height); document.getElementById('txt-target').innerText = `X: ${Math.round(robot.targetX)}, Y: ${Math.round(robot.targetY)}`; appendLog(`Nav2 Goal Dispatched: [${Math.round(robot.targetX)}, ${Math.round(robot.targetY)}]`); });
+        function toggleWeather() { isStormActive = !isStormActive; const btn = document.getElementById('btn-weather'); if(isStormActive) { btn.classList.add('active-blue'); appendLog("⚠️ Storm active. Adaptive EKF running."); initRain(); } else { btn.classList.remove('active-blue'); appendLog("🌤️ Weather cleared. Centimeter RTK restored."); } }
+        function toggleRadiation() { isRadiationEMIPresent = !isRadiationEMIPresent; const btn = document.getElementById('btn-radiation'); if(isRadiationEMIPresent) { btn.classList.add('active'); appendLog("☢️ MRI EMI Field Leakage! Common mode choke active."); } else { btn.classList.remove('active'); appendLog("🛡️ EMI baseline restored. Filters on standby."); } }
+        function resetSimulation() { robot.x = 150; robot.y = 300; robot.vx = 0; robot.vy = 0; robot.targetX = null; robot.targetY = null; robot.heading = 0; document.getElementById('txt-target').innerText = "Not Set"; appendLog("🤖 AMR Chassis commanded to Home Station."); }
+        function updatePhysics() {
+            if (robot.targetX !== null && robot.targetY !== null) {
+                let dx = robot.targetX - robot.x; let dy = robot.targetY - robot.y; let distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 4) {
+                    let angleToTarget = Math.atan2(dy, dx); robot.heading = angleToTarget; 
+                    let targetVx = Math.cos(angleToTarget) * robot.speed; let targetVy = Math.sin(angleToTarget) * robot.speed;
+                    let nextX = robot.x + targetVx; let nextY = robot.y + targetVy; let collisionDetected = false;
+                    obstacles.forEach(obs => { if (nextX + robot.radius > obs.x - 6 && nextX - robot.radius < obs.x + obs.w + 6 && nextY + robot.radius > obs.y - 6 && nextY - robot.radius < obs.y + obs.h + 6) collisionDetected = true; });
+                    if (!collisionDetected) { robot.vx = targetVx; robot.vy = targetVy; robot.x += robot.vx; robot.y += robot.vy; } 
+                    else { robot.x += Math.cos(angleToTarget + Math.PI/2) * robot.speed; robot.y += Math.sin(angleToTarget + Math.PI/2) * robot.speed; if(Math.random() < 0.02) appendLog("⚡ TEB local planner computing tangential path."); }
+                } else { robot.targetX = null; robot.targetY = null; robot.vx = 0; robot.vy = 0; appendLog("✅ AMR reached destination cleanly."); }
+            }
+            let speedMod = Math.sqrt(robot.vx*robot.vx + robot.vy*robot.vy); let idealTemp = 41 + speedMod * 2.2; if(isStormActive) idealTemp += 2.0; 
+            if(robot.temperature < idealTemp) robot.temperature += 0.04; if(robot.temperature > idealTemp) robot.temperature -= 0.02;
+            const tempVal = document.getElementById('txt-temp'); const tempBar = document.getElementById('bar-temp'); tempVal.innerText = `${robot.temperature.toFixed(1)} °C`; tempBar.style.width = `${Math.min((robot.temperature / 80) * 100, 100)}%`;
+            if(robot.temperature > 43.5) { tempVal.className = "data-val val-warn"; tempBar.style.backgroundColor = "var(--accent-yellow)"; document.getElementById('txt-cooling').innerText = "Liquid Phase Boost (Max)"; } 
+            else { tempVal.className = "data-val val-good"; tempBar.style.backgroundColor = "var(--accent-green)"; document.getElementById('txt-cooling').innerText = "Smart Hybrid (BYD Evaporator)"; }
+            const fusionTxt = document.getElementById('txt-fusion-mode'); const wLidar = document.getElementById('weight-lidar'); const wGnss = document.getElementById('weight-gnss'); const wImu = document.getElementById('weight-imu'); const gnssTxt = document.getElementById('txt-gnss'); const accTxt = document.getElementById('txt-accuracy');
+            if (isStormActive && isRadiationEMIPresent) {
+                fusionTxt.innerText = "IMU Dead-Reckoning (Isolated Fallback)"; fusionTxt.className = "data-val val-danger"; wLidar.innerText = "0.15 (Attenuated)"; wLidar.className = "data-val val-danger"; wGnss.innerText = "0.05 (Multipath Jammed)"; wGnss.className = "data-val val-danger"; wImu.innerText = "0.80 (Inertial Master)"; wImu.className = "data-val val-good"; gnssTxt.innerText = "SIGNAL EMI LOSS"; gnssTxt.className = "data-val val-danger"; accTxt.innerText = "18.5 cm (IMU Drift)"; accTxt.className = "data-val val-warn";
+            } else if (isStormActive) {
+                fusionTxt.innerText = "FAST-LIO2 Tightly-Coupled"; fusionTxt.className = "data-val val-warn"; wLidar.innerText = "0.65 (LiDAR Primary)"; wLidar.className = "data-val val-good"; wGnss.innerText = "0.05 (Storm Dropped)"; wGnss.className = "data-val val-danger"; wImu.innerText = "0.30 (IMU Compensated)"; wImu.className = "data-val val-warn"; gnssTxt.innerText = "RTK + IMU FUSION"; gnssTxt.className = "data-val val-warn"; accTxt.innerText = "3.2 cm (Multi-Source)"; accTxt.className = "data-val val-good";
+            } else if (isRadiationEMIPresent) {
+                fusionTxt.innerText = "GNSS + LiDAR Robust Fusion"; fusionTxt.className = "data-val val-good"; wLidar.innerText = "0.50"; wLidar.className = "data-val"; wGnss.innerText = "0.45 (Satellite Driven)"; wGnss.className = "data-val val-good"; wImu.innerText = "0.05 (EMI Shield Mode)"; wImu.className = "data-val val-warn"; gnssTxt.innerText = "RTK FIX"; gnssTxt.className = "data-val val-good"; accTxt.innerText = "1.8 cm"; accTxt.className = "data-val val-good";
+            } else {
+                fusionTxt.innerText = "FAST-LIO2 Tightly-Coupled"; fusionTxt.className = "data-val val-good"; wLidar.innerText = "0.60"; wLidar.className = "data-val"; wGnss.innerText = "0.30"; wGnss.className = "data-val"; wImu.innerText = "0.10"; wImu.className = "data-val"; gnssTxt.innerText = "RTK FIX (Centimeter)"; gnssTxt.className = "data-val val-good"; accTxt.innerText = "1.4 cm"; accTxt.className = "data-val val-good";
+            }
+            const canTxt = document.getElementById('txt-can-err'); if(isRadiationEMIPresent) { robot.canError = Math.random() * 0.02 + 0.01; canTxt.innerText = `${robot.canError.toFixed(2)} %`; canTxt.className = "data-val val-warn"; } else { robot.canError = 0.00; canTxt.innerText = "0.00 %"; canTxt.className = "data-val val-good"; }
+        }
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(48, 54, 61, 0.22)'; ctx.lineWidth = 1; const gridSize = 40;
+            for(let x=0; x<canvas.width; x+=gridSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+            for(let y=0; y<canvas.height; y+=gridSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+            obstacles.forEach(obs => { ctx.fillStyle = 'rgba(22, 27, 34, 0.95)'; ctx.strokeStyle = '#30363d'; ctx.lineWidth = 2; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); ctx.strokeRect(obs.x, obs.y, obs.w, obs.h); ctx.fillStyle = '#8b949e'; ctx.font = '11px monospace'; ctx.fillText(obs.name, obs.x + 8, obs.y + 20); });
+            if(robot.targetX !== null) { ctx.strokeStyle = 'var(--accent-blue)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(robot.x, robot.y); ctx.lineTo(robot.targetX, robot.targetY); ctx.stroke(); ctx.strokeStyle = '#f85149'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(robot.targetX, robot.targetY, 7, 0, Math.PI*2); ctx.stroke(); }
+            ctx.strokeStyle = 'rgba(88, 166, 255, 0.04)'; ctx.lineWidth = 1; for(let a=0; a<Math.PI*2; a+=Math.PI/12) { let lx = robot.x + Math.cos(a) * 180; let ly = robot.y + Math.sin(a) * 180; ctx.beginPath(); ctx.moveTo(robot.x, robot.y); ctx.lineTo(lx, ly); ctx.stroke(); }
+            ctx.save(); ctx.translate(robot.x, robot.y); ctx.rotate(robot.heading); ctx.fillStyle = '#21262d'; ctx.strokeStyle = '#58a6ff'; ctx.lineWidth = 2; ctx.fillRect(-15, -15, 30, 30); ctx.strokeRect(-15, -15, 30, 30); ctx.fillStyle = '#8b949e'; ctx.fillRect(-19, -19, 7, 5); ctx.fillRect(12, -19, 7, 5); ctx.fillRect(-19, 14, 7, 5); ctx.fillRect(12, 14, 7, 5); ctx.fillStyle = 'var(--accent-green)'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(12, 0); ctx.stroke(); ctx.restore();
+            // 7. Weather Rain Rendering Pipeline (Storm Simulation)
+            if (isStormActive) {
+                ctx.strokeStyle = 'rgba(88, 166, 255, 0.32)';
+                ctx.lineWidth = 1;
+                rainParticles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + 1, p.y + p.length);
+                    ctx.stroke();
+                    p.y += p.speed;
+                    if (p.y > canvas.height) {
+                        p.y = -20;
+                        p.x = Math.random() * canvas.width;
+                    }
+                });
+            }
+        }
+
+        // Master Application Sync Executive Framework
+        function mainLoop() {
+            updatePhysics();
+            draw();
+            requestAnimationFrame(mainLoop);
+        }
+
+        // Safe Initialization Chain Execution
+        appendLog("🚀 ROS2 Humble Stack core modules initiated...");
+        appendLog("📡 Sensor Fusion Engine (EKF Matrix): ARMED.");
+        appendLog("🏎️ RoboMaster CAN-Bus (1kHz Execution) Status: OK.");
+        mainLoop();
+    </script>
+</body>
+</html>
